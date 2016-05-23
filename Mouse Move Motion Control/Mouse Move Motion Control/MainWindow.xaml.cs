@@ -26,6 +26,8 @@ namespace Mouse_Move_Motion_Control
         private int cursorPositionX = 0;
         private int cursorPositionY = 0;
 
+        private float cursorSpeed = 0; // Use values 0 (Slow) - 10 (Fast)
+
         public MainWindow()
         {
             InitializeComponent();
@@ -43,27 +45,6 @@ namespace Mouse_Move_Motion_Control
             }
         }
 
-        private void LeapControllerFrameReady(object sender, FrameEventArgs e)
-        {
-            Hand leftHand = e.frame.Hands.FirstOrDefault(x => x.IsLeft);
-            Hand rightHand = e.frame.Hands.FirstOrDefault(x => x.IsRight);
-
-            if (leftHand != null)
-            {
-                Finger indexFinger = leftHand.Fingers.FirstOrDefault(x => x.Type == Finger.FingerType.TYPE_INDEX);
-
-                if (indexFinger != null)
-                {
-                    this.MoveCursor(indexFinger.TipVelocity.x / 20.0f, -indexFinger.TipVelocity.y / 20.0f);
-                }
-            }
-        }
-
-        private void MoveCursor(float fingerPositionX, float fingerPositionY)
-        { 
-            MouseController.MoveCursorBy(fingerPositionX, fingerPositionY);
-        }
-
         private void StopMotionControlButtonClick(object sender, RoutedEventArgs e)
         {
             if (this.LeapController != null)
@@ -73,5 +54,89 @@ namespace Mouse_Move_Motion_Control
                 this.LeapController = null;
             }
         }
+
+        private void LeapControllerFrameReady(object sender, FrameEventArgs e)
+        {
+            Hand leftHand = e.frame.Hands.FirstOrDefault(x => x.IsLeft);
+            Hand rightHand = e.frame.Hands.FirstOrDefault(x => x.IsRight);
+
+            if (rightHand != null)
+            {
+                CheckLeftClick(rightHand);
+                CheckRightClick(rightHand);
+
+                if (rightHand.PalmPosition.y < 115.0f)
+                {
+                    float cursorSpeedMultiplier = (20.0f - this.cursorSpeed);
+
+                    MouseController.MoveCursorBy(rightHand.PalmVelocity.x / cursorSpeedMultiplier, rightHand.PalmVelocity.z / cursorSpeedMultiplier);
+                }
+            }
+        }
+
+        private void CheckLeftClick(Hand rightHand)
+        {
+            float leftClickFingerDistance = this.FingerDistance(rightHand, Finger.FingerType.TYPE_INDEX, Finger.FingerType.TYPE_THUMB);
+
+            if (leftClickFingerDistance < 50.0f)
+            {
+                if (MouseController.LeftMouseButtonStatus == ButtonStatus.Released)
+                {
+                    MouseController.PressLeftMouseButton();
+                }
+                else if (MouseController.LeftMouseButtonStatus == ButtonStatus.Pressed)
+                {
+                    MouseController.HoldLeftMouseButton();
+                }
+            }
+            else
+            {
+                if (MouseController.LeftMouseButtonStatus != ButtonStatus.Released)
+                {
+                    MouseController.ReleaseLeftMouseButton();
+                }
+            }
+        }
+
+        private void CheckRightClick(Hand rightHand)
+        {
+            float rightClickFingerDistance = this.FingerDistance(rightHand, Finger.FingerType.TYPE_MIDDLE, Finger.FingerType.TYPE_THUMB);
+
+            if (rightClickFingerDistance < 50.0f)
+            {
+                if (MouseController.RightMouseButtonStatus == ButtonStatus.Released)
+                {
+                    MouseController.PressRightMouseButton();
+                }
+                else if (MouseController.RightMouseButtonStatus == ButtonStatus.Pressed)
+                {
+                    MouseController.HoldRightMouseButton();
+                }
+            }
+            else
+            {
+                if (MouseController.RightMouseButtonStatus != ButtonStatus.Released)
+                {
+                    MouseController.ReleaseRightMouseButton();
+                }
+            }
+        }
+
+        private float FingerDistance(Hand hand, Finger.FingerType firstFingerType, Finger.FingerType secondFingerType)
+        {
+            if (hand != null)
+            {
+                Finger firstFinger = hand.Fingers.FirstOrDefault(f => f.Type == firstFingerType);
+                Finger secondFinger = hand.Fingers.FirstOrDefault(f => f.Type == secondFingerType);
+
+                if (firstFinger != null && secondFinger != null)
+                {
+                    return firstFinger.TipPosition.DistanceTo(secondFinger.TipPosition);
+                }
+            }
+
+            return 100.0f;
+        }
+
     }
 }
