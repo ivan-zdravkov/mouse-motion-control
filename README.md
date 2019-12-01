@@ -1,4 +1,4 @@
-#Mouse Move Motion Control
+## Mouse Move Motion Control
 
 A simple WPF application that allows for basic mouse move actions using [Leap Motion](https://www.leapmotion.com/) motion control and the user32.dll windows library. 
 
